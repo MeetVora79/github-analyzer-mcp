@@ -13,8 +13,8 @@ const octokit = new Octokit({
 
 export default octokit;
 
-export async function getRepoInfo(owner, repo) {
-  const { data } = await octokit.rest.repos.get({ owner, repo });
+export async function getRepoInfo(owner, repo, client = octokit) {
+  const { data } = await client.rest.repos.get({ owner, repo });
 
   return {
     fullName: data.full_name,
@@ -30,8 +30,13 @@ export async function getRepoInfo(owner, repo) {
   };
 }
 
-export async function listOpenIssues(owner, repo, limit = 10) {
-  const { data } = await octokit.rest.issues.listForRepo({
+export async function listOpenIssues(
+  owner,
+  repo,
+  limit = 10,
+  client = octokit,
+) {
+  const { data } = await client.rest.issues.listForRepo({
     owner,
     repo,
     state: "open",
@@ -57,8 +62,9 @@ export async function listPullRequests(
   repo,
   state = "open",
   limit = 10,
+  client = octokit,
 ) {
-  const { data } = await octokit.rest.pulls.list({
+  const { data } = await client.rest.pulls.list({
     owner,
     repo,
     state,
@@ -79,8 +85,8 @@ export async function listPullRequests(
   }));
 }
 
-export async function getCommitStatus(owner, repo, ref) {
-  const { data } = await octokit.rest.repos.getCombinedStatusForRef({
+export async function getCommitStatus(owner, repo, ref, client = octokit) {
+  const { data } = await client.rest.repos.getCombinedStatusForRef({
     owner,
     repo,
     ref,
@@ -99,8 +105,13 @@ export async function getCommitStatus(owner, repo, ref) {
   };
 }
 
-export async function getPullRequestDiff(owner, repo, pullNumber) {
-  const { data } = await octokit.rest.pulls.get({
+export async function getPullRequestDiff(
+  owner,
+  repo,
+  pullNumber,
+  client = octokit,
+) {
+  const { data } = await client.rest.pulls.get({
     owner,
     repo,
     pull_number: pullNumber,
@@ -129,8 +140,14 @@ function truncateDiff(diffText, maxChars = 8000) {
   );
 }
 
-export async function listRecentCommits(owner, repo, branch, limit = 10) {
-  const { data } = await octokit.rest.repos.listCommits({
+export async function listRecentCommits(
+  owner,
+  repo,
+  branch,
+  limit = 10,
+  client = octokit,
+) {
+  const { data } = await client.rest.repos.listCommits({
     owner,
     repo,
     sha: branch, // optional — branch name, tag, or SHA to start from
