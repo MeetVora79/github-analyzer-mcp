@@ -27,3 +27,13 @@ jobs:
         run: npm test
         env:
           GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN_TEST }}
+  
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t github-analyzer-mcp .
