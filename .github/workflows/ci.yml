@@ -28,12 +28,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN_TEST }}
   
-  docker-build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Build Docker image
-        run: docker build -t github-analyzer-mcp .
+        run: docker build -t meetvora07/github-analyzer-mcp .
+
+      - run: echo "${{secrets.DOCKERHUB_PASSWORD}}" | docker login -u ${{secrets.DOCKERHUB_USERNAME}} --password-stdin
+
+      - name: Image Push to Docker Hub
+        run: docker push meetvora07/github-analyzer-mcp
