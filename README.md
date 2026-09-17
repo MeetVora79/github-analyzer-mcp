@@ -1,5 +1,7 @@
 # GitHub Analyzer MCP Server
 
+[![CI](https://github.com/MeetVora79/github-analyzer-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MeetVora79/github-analyzer-mcp/actions/workflows/ci.yml)
+
 An MCP (Model Context Protocol) server that exposes GitHub repository data as tools an AI assistant can call — repo info, issues, pull requests, commit statuses, PR diffs, and recent commits.
 
 Works with any MCP-compatible client (Claude Desktop, Cline, Claude.ai, etc.) both **locally** (stdio) and as a **deployed remote server** (Streamable HTTP).
@@ -28,24 +30,34 @@ The Model Context Protocol is a standard way for AI applications to discover and
 - **[Octokit](https://github.com/octokit/octokit.js)** — GitHub API client
 - **[Zod](https://zod.dev)** — input schema validation for tools
 - **Express** — HTTP layer for Streamable HTTP (remote) transport
+- **[Jest](https://jestjs.io)** — unit testing
+- **[Docker](https://www.docker.com)** — containerized local/deployable runtime
+- **GitHub Actions** — CI (tests + Docker build verified on every push)
 - **[Render](https://render.com)** — deployment
 
 ## Project structure
 
 ```
 github-analyzer-mcp/
+├── .github/
+│   └── workflows/
+│       └── ci.yml            # GitHub Actions — runs tests + Docker build on every push
 ├── src/
 │   ├── github/
 │   │   └── client.js       # Octokit setup + GitHub wrapper functions (MCP-agnostic)
+│   │   └── client.test.js    # Unit tests for client.js (mocked Octokit, no live API calls)
 │   ├── tools/
 │   │   └── index.js        # createMcpServer() — registers all tools with schemas
+│   │   └── index.test.js     # Integration tests — real MCP Client/Server over an in-memory transport
 │   └── server.js            # Entry point — picks stdio or HTTP transport
+├── Dockerfile                  # Container build (HTTP mode)
+├── .dockerignore                # Excludes node_modules, .env, tests from the image
 ├── .env                      # GITHUB_TOKEN (not committed)
 ├── .gitignore
 └── package.json
 ```
 
-`github/client.js` contains plain async functions with no MCP dependency — they can be tested or reused independently of the MCP layer. `tools/index.js` wraps those functions with MCP tool schemas and descriptions. `server.js` wires everything to a transport.
+`github/client.js` contains plain async functions with no MCP dependency — they can be tested or reused independently of the MCP layer. Each function accepts an optional Octokit client parameter (dependency injection), so tests can pass in a fake client instead of hitting the real GitHub API. `tools/index.js` wraps those functions with MCP tool schemas and descriptions. `server.js` wires everything to a transport.
 
 ## Setup
 
@@ -102,6 +114,38 @@ npx @modelcontextprotocol/inspector node src/server.js
 ```
 
 Opens a local web UI to list and manually call tools without needing a full AI client — useful for verifying a tool works before wiring up a client.
+
+## Testing
+ 
+```bash
+npm test
+```
+ 
+Runs the full Jest suite:
+ 
+- **`src/github/client.test.js`** — unit tests for every GitHub-wrapper function (`getRepoInfo`, `listOpenIssues`, `listPullRequests`, `getCommitStatus`, `getPullRequestDiff`, `listRecentCommits`). Each function is tested against a fake Octokit client passed via dependency injection, so tests run instantly with no live GitHub API calls and no rate-limit risk.
+- **`src/tools/index.test.js`** — integration tests that spin up a real `McpServer` and a real MCP `Client` connected over an in-memory transport, then call each registered tool exactly as a real MCP client would. Covers the success path, error handling (`isError: true` on a thrown exception), and Zod input-validation rejections for missing/invalid arguments.
+Because this project uses ES Modules (`"type": "module"`), Jest runs with Node's experimental VM modules flag — see the `test` script in `package.json` if you're curious how that's wired up.
+ 
+## Docker
+ 
+The server can run in a container, using the same HTTP transport as the Render deployment.
+ 
+**Build the image:**
+ 
+```bash
+docker build -t github-analyzer-mcp .
+```
+ 
+**Run it**, passing your token in at runtime (never baked into the image — `.env` is excluded via `.dockerignore`):
+ 
+```bash
+docker run -p 3000:3000 --env-file .env github-analyzer-mcp
+```
+ 
+The MCP endpoint is then available at `http://localhost:3000/mcp`.
+ 
+> Anyone who pulls this image gets a working server with **no GitHub access** until they supply their own token via `-e GITHUB_TOKEN=...` or `--env-file`. Pulling the image never grants access to the maintainer's repos or token — each user brings their own.
 
 ## Connecting a client
 
@@ -160,6 +204,14 @@ Fully restart the client after editing its config — MCP servers are only loade
 5. Deploy. Your MCP endpoint will be `https://<your-service>.onrender.com/mcp`.
 
 > Free-tier Render instances spin down after inactivity — the first request after idle time may take 30–60 seconds while the instance wakes up.
+
+## Continuous Integration
+ 
+Every push and pull request to `main` triggers a GitHub Actions workflow (`.github/workflows/ci.yml`) with two jobs, run in parallel:
+ 
+- **`test`** — installs dependencies and runs the full Jest suite (see [Testing](#testing) above).
+- **`docker-build`** — runs `docker build` against the `Dockerfile` to confirm the image still builds cleanly, catching a broken Dockerfile before it reaches a real deploy.
+Both must pass for the workflow to go green. See the badge at the top of this README, or the [Actions tab](https://github.com/MeetVora79/github-analyzer-mcp/actions) for run history.
 
 ## Transport notes
 
