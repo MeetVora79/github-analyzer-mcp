@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/MeetVora79/github-analyzer-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/MeetVora79/github-analyzer-mcp/actions/workflows/ci.yml)
 
-An MCP (Model Context Protocol) server that exposes GitHub repository data as tools an AI assistant can call — repo info, issues, pull requests, commit statuses, PR diffs, and recent commits.
+MCP (Model Context Protocol) server that exposes GitHub repository data as tools an AI assistant can call — repo info, issues, pull requests, commit statuses, PR diffs, and recent commits.
 
 Works with any MCP-compatible client (Claude Desktop, Cline, Claude.ai, etc.) both **locally** (stdio) and as a **deployed remote server** (Streamable HTTP).
 
